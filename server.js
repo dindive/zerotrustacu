@@ -22,7 +22,77 @@ if (fs.existsSync(DB_PATH)) {
 const web3 = new Web3(
   "https://sepolia.infura.io/v3/b38cf753021449a584d8a9ea94fce34c",
 );
-const contractABI = [];
+const contractABI = [
+  {
+    inputs: [],
+    stateMutability: "nonpayable",
+    type: "constructor",
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "rfid",
+        type: "string",
+      },
+    ],
+    name: "addUser",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "admin",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "rfid",
+        type: "string",
+      },
+    ],
+    name: "isUser",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    name: "validRFIDs",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
 const contractAddress = "0x71e3Fc38c65e28730162D072b85636b4207710FE";
 const contract = new web3.eth.Contract(contractABI, contractAddress);
 
