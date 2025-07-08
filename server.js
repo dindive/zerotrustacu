@@ -2,7 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const bodyParser = require("body-parser");
-const Web3 = require("web3");
+const Web3 = require("web3").default;
 
 // === App & Middleware ===
 const app = express();
