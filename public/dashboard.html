@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>Welcome to the Dashboard</h1>
+            <p id="walletDisplay"></p>
+            <button onclick="logout()">Logout</button>
+        </header>
+        <main>
+            <section class="card">
+                <h2>Status</h2>
+                <p>✅ Authenticated via Blockchain</p>
+            </section>
+            <section class="card">
+                <h2>Session</h2>
+                <p>Zero Trust session will expire in 90 seconds.</p>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const wallet = localStorage.getItem("wallet");
+        if (!wallet) window.location.href = "/";
+        document.getElementById("walletDisplay").textContent = `Wallet: ${wallet}`;
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "/";
+        }
+
+        setTimeout(() => {
+            alert("Re-authentication via MetaMask required.");
+            window.location.href = "/";
+        }, 30000);
+
+        setTimeout(() => {
+            alert("Full authentication required.");
+            window.location.href = "/";
+        }, 90000);
+    </script>
+</body>
+
+</html>
