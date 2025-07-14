@@ -2,47 +2,21 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Secure Web3 Authentication</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <title>ZeroTrust Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
-    <div class="container">
-        <div class="login-box">
-            <h1>Zero Trust Auth</h1>
-            <p>Authenticate with your blockchain wallet</p>
-            <button id="loginBtn">Login with MetaMask</button>
-        </div>
+<body class="login-page">
+    <div class="login-container">
+        <h1>🔐 ZeroTrust Authentication</h1>
+        <button id="loginBtn">Login with MetaMask</button>
+        <p id="loginStatus"></p>
     </div>
 
-    <script>
-        async function loginWithMetaMask() {
-            if (typeof window.ethereum !== 'undefined') {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const wallet = accounts[0];
-
-                localStorage.setItem("wallet", wallet);
-                window.location.href = "/dashboard";
-            } else {
-                alert("Please install MetaMask to continue.");
-            }
-        }
-
-        document.getElementById("loginBtn").onclick = loginWithMetaMask;
-
-        // Re-authentication timers (Zero Trust)
-        setTimeout(() => {
-            alert("🔒 Re-authentication required: MetaMask only.");
-            loginWithMetaMask();
-        }, 30000);
-
-        setTimeout(() => {
-            alert("🔐 Full re-authentication required (RFID + password + MetaMask).");
-            window.location.href = "/";
-        }, 90000);
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>

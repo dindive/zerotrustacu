@@ -1,45 +1,28 @@
 const express = require("express");
+const cors = require("cors");
 const fs = require("fs");
-const path = require("path");
 const bodyParser = require("body-parser");
 const Web3 = require("web3").default;
+const path = require("path");
 
-// === App & Middleware ===
 const app = express();
-const PORT = 3000;
+const port = 3000;
 
+app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"))); // Serve frontend
 
-// === Load Local DB ===
-const DB_PATH = path.join(__dirname, "database.json");
-let db = { users: [] };
-if (fs.existsSync(DB_PATH)) {
-  db = JSON.parse(fs.readFileSync(DB_PATH));
-}
-
-// === Blockchain Setup ===
+// === Web3 Setup ===
 const web3 = new Web3(
-  "https://sepolia.infura.io/v3/b38cf753021449a584d8a9ea94fce34c",
+  new Web3.providers.HttpProvider(
+    "https://sepolia.infura.io/v3/b38cf753021449a584d8a9ea94fce34c",
+  ),
 );
 const contractABI = [
   {
     inputs: [],
     stateMutability: "nonpayable",
     type: "constructor",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "rfid",
-        type: "string",
-      },
-    ],
-    name: "addUser",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
   },
   {
     inputs: [],
@@ -62,7 +45,7 @@ const contractABI = [
         type: "string",
       },
     ],
-    name: "isUser",
+    name: "isRegistered",
     outputs: [
       {
         internalType: "bool",
@@ -77,86 +60,90 @@ const contractABI = [
     inputs: [
       {
         internalType: "string",
-        name: "",
+        name: "rfid",
         type: "string",
       },
     ],
-    name: "validRFIDs",
-    outputs: [
+    name: "registerRFID",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
       {
-        internalType: "bool",
-        name: "",
-        type: "bool",
+        internalType: "string",
+        name: "rfid",
+        type: "string",
       },
     ],
-    stateMutability: "view",
+    name: "removeRFID",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
 ];
-const contractAddress = "0x71e3Fc38c65e28730162D072b85636b4207710FE";
+const contractAddress = "0x0e231E96D288F7a8e96cC01C3E194CEcb7Ad8F13"; // deployed contract
 const contract = new web3.eth.Contract(contractABI, contractAddress);
 
-// === Serve Pages ===
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "views/index.html"));
-});
+// === Database ===
+const dbPath = "./database.json";
+function loadDatabase() {
+  if (!fs.existsSync(dbPath)) return {};
+  return JSON.parse(fs.readFileSync(dbPath));
+}
+function saveDatabase(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+}
 
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, "views/dashboard.html"));
-});
-
-// === ESP8266 RFID + Password Authentication ===
+// === Authenticate (IoT Flow) ===
 app.post("/authenticate", async (req, res) => {
+  const { rfid, password } = req.body;
+  const db = loadDatabase();
+
+  if (!rfid || !password)
+    return res
+      .status(400)
+      .json({ success: false, message: "Missing credentials" });
+
+  const isRegistered = await contract.methods.isRegistered(rfid).call();
+  if (!isRegistered || !db[rfid] || db[rfid].password !== password) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Authentication failed" });
+  }
+
+  return res
+    .status(200)
+    .json({ success: true, message: "Authentication successful" });
+});
+
+// === Set password (IoT first use) ===
+app.post("/set-password", (req, res) => {
+  const { rfid, password } = req.body;
+  const db = loadDatabase();
+  db[rfid] = { password };
+  saveDatabase(db);
+  res.status(200).json({ success: true });
+});
+
+// === Register RFID via smart contract ===
+app.post("/register-rfid", async (req, res) => {
+  const { rfid, fromAddress } = req.body;
   try {
-    const { rfid, password } = req.body;
-
-    if (!rfid || !password) {
-      return res
-        .status(400)
-        .json({ success: false, msg: "Missing RFID or password" });
-    }
-
-    // Check local DB for user
-    const user = db.users.find((u) => u.rfid === rfid);
-
-    if (!user) {
-      return res.status(404).json({ success: false, msg: "RFID not found" });
-    }
-
-    if (!user.password) {
-      // First-time password setup
-      user.password = password;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
-      return res.json({
-        success: true,
-        msg: "Password initialized. Continue with MetaMask login.",
-      });
-    }
-
-    if (user.password !== password) {
-      return res.status(403).json({ success: false, msg: "Invalid password" });
-    }
-
-    // Check if RFID is registered on blockchain
-    const isRegistered = await contract.methods.isUser(rfid).call();
-
-    if (!isRegistered) {
-      return res
-        .status(403)
-        .json({ success: false, msg: "RFID not registered on blockchain" });
-    }
-
-    res.json({
-      success: true,
-      msg: "Authentication successful. Proceed to blockchain login.",
-    });
+    const tx = await contract.methods
+      .registerRFID(rfid)
+      .send({ from: fromAddress });
+    res.status(200).json({ success: true, tx });
   } catch (err) {
-    console.error("Authentication Error:", err);
-    res.status(500).json({ success: false, msg: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Smart contract error",
+      error: err.message,
+    });
   }
 });
 
-// === Start Server ===
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+app.listen(port, () =>
+  console.log(`Server running at http://localhost:${port}`),
+);
