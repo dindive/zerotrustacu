@@ -69,7 +69,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 // Helpers
-const hashUtf8 = (s) => ethers.keccak256(ethers.toUtf8Bytes(s));
+const hashUtf8 = (s) => ethers.keccak256(ethers.utils.toUtf8Bytes(s));
 
 function getOrInitSession(userKey /* rfidHash hex */, req) {
   db.sessions[userKey] ||= {
