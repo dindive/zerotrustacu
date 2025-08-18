@@ -174,6 +174,9 @@ app.post("/siwe/verify", async (req, res) => {
     const nonce = req.session.nonce;
     const userKey = req.session.userKey;
 
+    console.log("Nonce:", nonce);
+    console.log("Address:", address);
+    
     if (!nonce || !address || !signature || !userKey) {
       return res.status(400).json({ ok: false, error: "bad-request" });
     }
