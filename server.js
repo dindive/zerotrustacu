@@ -28,13 +28,15 @@ if (!RPC_URL || !CONTRACT_ADDRESS || !PRIVATE_KEY) {
 const abi = require("./abi/ContractABI.json"); // export from Remix for ZeroTrustAuth
 
 // --- Ethers setup ---
-
-const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(
-  "337226822ac523fd31bf8d9777f22c883b0463e625ebcf8984574fe94cbd0145",
-  provider,
-);
-const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, wallet);
+let provider, signer, contract;
+try {
+  provider = new ethers.JsonRpcProvider(RPC_URL); //  Correct constructor for ethers v6
+  signer = new ethers.Wallet(PRIVATE_KEY, provider);
+  contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
+  console.log("[OK] Connected to blockchain");
+} catch (err) {
+  console.error("[ERROR] Ethers setup failed:", err.message);
+}
 
 // --- JSON store ---
 const DB_FILE = path.join(__dirname, "database.json");
@@ -67,7 +69,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 // Helpers
-const hashUtf8 = (s) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
+const hashUtf8 = (s) => ethers.keccak256(ethers.toUtf8Bytes(s));
 
 function getOrInitSession(userKey /* rfidHash hex */, req) {
   db.sessions[userKey] ||= {
@@ -90,7 +92,6 @@ function policyResult(sess) {
 }
 
 // === ESP8266: RFID + PIN ===
-// Body: { rfid: "string", password: "string" }
 app.post("/authenticate", async (req, res) => {
   try {
     const { rfid, password } = req.body || {};
@@ -108,11 +109,11 @@ app.post("/authenticate", async (req, res) => {
     let valid = false;
 
     if (!hasPassword) {
-      // First-time set (admin-only tx)
+      // First-time password set
       try {
         const tx = await contract.setPasswordFirstTime(rfidHash, passHash);
         await tx.wait();
-        valid = true; // first-time accept
+        valid = true;
       } catch (e) {
         console.error("setPasswordFirstTime failed:", e.message);
         return res
@@ -134,20 +135,19 @@ app.post("/authenticate", async (req, res) => {
     if (!valid)
       return res.status(401).json({ ok: false, error: "invalid-credentials" });
 
-    // Update session record
+    // Update session
     const sess = getOrInitSession(rfidHash, req);
     const t = nowSec();
     sess.lastFullAuthAt = t;
-    sess.lastWalletAuthAt = t; // you may decouple if you prefer
-    sess.boundWallet =
-      wallet && wallet !== ethers.constants.AddressZero ? wallet : null;
+    sess.lastWalletAuthAt = t;
+    sess.boundWallet = wallet && wallet !== ethers.ZeroAddress ? wallet : null;
     if (sess.boundWallet) db.walletBindings[rfidHash] = sess.boundWallet;
     writeDB(db);
 
     const next = sess.boundWallet ? "none" : "wallet";
     return res.json({
       ok: true,
-      userId: rfid /* display only */,
+      userId: rfid,
       rfidHash,
       boundWallet: sess.boundWallet,
       next,
@@ -169,20 +169,19 @@ app.post("/siwe/verify", async (req, res) => {
   try {
     const { address, signature } = req.body || {};
     const nonce = req.session.nonce;
-    const userKey = req.session.userKey; // rfidHash hex
+    const userKey = req.session.userKey;
 
     if (!nonce || !address || !signature || !userKey) {
       return res.status(400).json({ ok: false, error: "bad-request" });
     }
 
     const message = `Login to ZeroTrust - nonce:${nonce}`;
-    const recovered = ethers.utils.verifyMessage(message, signature);
+    const recovered = ethers.verifyMessage(message, signature);
     if (recovered.toLowerCase() !== address.toLowerCase())
       return res.status(401).json({ ok: false, error: "bad-signature" });
 
     const sess = getOrInitSession(userKey, req);
 
-    // If not bound yet, bind on-chain (admin-only tx)
     if (!sess.boundWallet) {
       try {
         const tx = await contract.bindWallet(userKey, address);
@@ -195,7 +194,6 @@ app.post("/siwe/verify", async (req, res) => {
       }
     }
 
-    // Mark wallet auth
     sess.lastWalletAuthAt = nowSec();
     req.session.address = address;
     writeDB(db);
@@ -206,7 +204,7 @@ app.post("/siwe/verify", async (req, res) => {
   }
 });
 
-// Policy & protected resource
+// === Policy check ===
 app.get("/reauth-policy", (req, res) => {
   const userKey = req.session.userKey;
   if (!userKey) return res.json({ needFull: true, needWalletOnly: false });
@@ -226,7 +224,7 @@ app.get("/api/dashboard-state", async (req, res) => {
   res.json({ ok: true, userKey, boundWallet: sess.boundWallet });
 });
 
-// Pages
+// === Pages ===
 app.get("/login", (_, res) =>
   res.sendFile(path.join(__dirname, "public", "index.html")),
 );

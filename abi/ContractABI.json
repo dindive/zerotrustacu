@@ -1,10 +1,65 @@
 [
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
     "inputs": [
       {
-        "internalType": "string",
-        "name": "_rfid",
-        "type": "string"
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PasswordSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "UserRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "wallet",
+        "type": "address"
+      }
+    ],
+    "name": "WalletBound",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "walletAddr",
+        "type": "address"
       }
     ],
     "name": "bindWallet",
@@ -15,75 +70,35 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "_rfid",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_password",
-        "type": "string"
-      }
-    ],
-    "name": "preloadUser",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_rfid",
-        "type": "string"
-      }
-    ],
-    "name": "reauthenticate",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "wallet",
-        "type": "address"
-      }
-    ],
-    "name": "Reauthenticated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "wallet",
-        "type": "address"
-      },
-      {
-        "indexed": false,
         "internalType": "bytes32",
         "name": "rfidHash",
         "type": "bytes32"
       }
     ],
-    "name": "UserBound",
-    "type": "event"
-  },
-  {
-    "inputs": [
+    "name": "getUser",
+    "outputs": [
       {
-        "internalType": "string",
-        "name": "_rfid",
-        "type": "string"
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "hasPassword",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "wallet",
+        "type": "address"
       }
     ],
-    "name": "getWallet",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
     "outputs": [
       {
         "internalType": "address",
@@ -97,17 +112,48 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "_rfid",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_password",
-        "type": "string"
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
       }
     ],
-    "name": "verifyUser",
+    "name": "registerUser",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "passHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setPasswordFirstTime",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "rfidHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "passHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "verifyCredentials",
     "outputs": [
       {
         "internalType": "bool",
