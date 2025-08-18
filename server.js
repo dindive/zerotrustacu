@@ -98,8 +98,10 @@ app.post("/authenticate", async (req, res) => {
     if (!rfid || !password)
       return res.status(400).json({ ok: false, error: "bad-request" });
 
+    console.log("the pass: ", password);
     const rfidHash = hashUtf8(rfid);
     const passHash = hashUtf8(password);
+    console.log("pass hash: ", passHash);
 
     // Read user from chain
     const [exists, hasPassword, wallet] = await contract.getUser(rfidHash);
