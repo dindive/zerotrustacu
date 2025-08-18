@@ -12,7 +12,7 @@ const { ethers } = require("ethers");
 // --- Config ---
 const {
   PORT = 3000,
-  SESSION_SECRET = "dev-secret-change-me",
+  SESSION_SECRET,
   RPC_URL,
   CONTRACT_ADDRESS,
   PRIVATE_KEY,
@@ -28,9 +28,13 @@ if (!RPC_URL || !CONTRACT_ADDRESS || !PRIVATE_KEY) {
 const abi = require("./abi/ContractABI.json"); // export from Remix for ZeroTrustAuth
 
 // --- Ethers setup ---
+
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-const signer = new ethers.Wallet(PRIVATE_KEY, provider);
-const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
+const wallet = new ethers.Wallet(
+  "337226822ac523fd31bf8d9777f22c883b0463e625ebcf8984574fe94cbd0145",
+  provider,
+);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, wallet);
 
 // --- JSON store ---
 const DB_FILE = path.join(__dirname, "database.json");
