@@ -1,22 +1,98 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <title>ZeroTrust Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
+    <meta charset="utf-8" />
+    <title>ZeroTrust – Login</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>
+        body {
+            font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0
+        }
+
+        .card {
+            background: #111827;
+            padding: 24px 28px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, .35);
+            max-width: 420px;
+            width: 92%
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-weight: 700
+        }
+
+        p {
+            opacity: .8;
+            margin: 0 0 14px
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 0;
+            background: #22c55e;
+            color: #0b1120;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        button:disabled {
+            background: #334155;
+            color: #94a3b8;
+            cursor: not-allowed
+        }
+
+        .muted {
+            font-size: 12px;
+            opacity: .7;
+            margin-top: 10px
+        }
+
+        .ok {
+            color: #22c55e
+        }
+
+        .warn {
+            color: #f59e0b
+        }
+
+        .bad {
+            color: #ef4444
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #0ea5e9;
+            color: #082f49;
+            font-weight: 700;
+            margin-left: 6px
+        }
+    </style>
 </head>
 
-<body class="login-page">
-    <div class="login-container">
-        <h1>🔐 ZeroTrust Authentication</h1>
-        <button id="loginBtn">Login with MetaMask</button>
-        <p id="loginStatus"></p>
+<body>
+    <div class="card">
+        <h1>ZeroTrust Login <span id="policy" class="pill">checking…</span></h1>
+        <p>Step 1 (done by device): Tap RFID + enter PIN on the terminal.</p>
+        <p>Step 2 (here): Continue with your wallet to complete login / binding.</p>
+        <button id="btnWallet">Continue with Wallet</button>
+        <div class="muted" id="log"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>

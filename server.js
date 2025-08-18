@@ -1,149 +1,235 @@
+// server.js
+require("dotenv").config();
+const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
+const crypto = require("crypto");
 const bodyParser = require("body-parser");
-const Web3 = require("web3").default;
-const path = require("path");
+const session = require("express-session");
+const { ethers } = require("ethers");
 
-const app = express();
-const port = 3000;
+// --- Config ---
+const {
+  PORT = 3000,
+  SESSION_SECRET = "dev-secret-change-me",
+  RPC_URL,
+  CONTRACT_ADDRESS,
+  PRIVATE_KEY,
+  WALLET_ONLY_WINDOW = 60,
+  FULL_RELOGIN_WINDOW = 90,
+} = process.env;
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public"))); // Serve frontend
-
-// === Web3 Setup ===
-const web3 = new Web3(
-  new Web3.providers.HttpProvider(
-    "https://sepolia.infura.io/v3/b38cf753021449a584d8a9ea94fce34c",
-  ),
-);
-const contractABI = [
-  {
-    inputs: [],
-    stateMutability: "nonpayable",
-    type: "constructor",
-  },
-  {
-    inputs: [],
-    name: "admin",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "rfid",
-        type: "string",
-      },
-    ],
-    name: "isRegistered",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "rfid",
-        type: "string",
-      },
-    ],
-    name: "registerRFID",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "rfid",
-        type: "string",
-      },
-    ],
-    name: "removeRFID",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-];
-const contractAddress = "0x0e231E96D288F7a8e96cC01C3E194CEcb7Ad8F13"; // deployed contract
-const contract = new web3.eth.Contract(contractABI, contractAddress);
-
-// === Database ===
-const dbPath = "./database.json";
-function loadDatabase() {
-  if (!fs.existsSync(dbPath)) return {};
-  return JSON.parse(fs.readFileSync(dbPath));
-}
-function saveDatabase(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+if (!RPC_URL || !CONTRACT_ADDRESS || !PRIVATE_KEY) {
+  console.warn("[WARN] Missing RPC_URL / CONTRACT_ADDRESS / PRIVATE_KEY");
 }
 
-// === Authenticate (IoT Flow) ===
-app.post("/authenticate", async (req, res) => {
-  const { rfid, password } = req.body;
-  const db = loadDatabase();
+// --- Load ABI ---
+const abi = require("./abi/ContractABI.json"); // export from Remix for ZeroTrustAuth
 
-  if (!rfid || !password)
-    return res
-      .status(400)
-      .json({ success: false, message: "Missing credentials" });
+// --- Ethers setup ---
+const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+const signer = new ethers.Wallet(PRIVATE_KEY, provider);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
 
-  const isRegistered = await contract.methods.isRegistered(rfid).call();
-  if (!isRegistered || !db[rfid] || db[rfid].password !== password) {
-    return res
-      .status(403)
-      .json({ success: false, message: "Authentication failed" });
-  }
-
-  return res
-    .status(200)
-    .json({ success: true, message: "Authentication successful" });
-});
-
-// === Set password (IoT first use) ===
-app.post("/set-password", (req, res) => {
-  const { rfid, password } = req.body;
-  const db = loadDatabase();
-  db[rfid] = { password };
-  saveDatabase(db);
-  res.status(200).json({ success: true });
-});
-
-// === Register RFID via smart contract ===
-app.post("/register-rfid", async (req, res) => {
-  const { rfid, fromAddress } = req.body;
+// --- JSON store ---
+const DB_FILE = path.join(__dirname, "database.json");
+function readDB() {
   try {
-    const tx = await contract.methods
-      .registerRFID(rfid)
-      .send({ from: fromAddress });
-    res.status(200).json({ success: true, tx });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Smart contract error",
-      error: err.message,
+    return JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+  } catch {
+    return { sessions: {}, walletBindings: {} };
+  }
+}
+function writeDB(data) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+}
+const db = readDB();
+
+// --- App ---
+const app = express();
+app.use(cors({ origin: true, credentials: true }));
+app.use(bodyParser.json());
+app.use(
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: "lax" },
+  }),
+);
+app.use(express.static(path.join(__dirname, "public")));
+
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+// Helpers
+const hashUtf8 = (s) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
+
+function getOrInitSession(userKey /* rfidHash hex */, req) {
+  db.sessions[userKey] ||= {
+    lastWalletAuthAt: 0,
+    lastFullAuthAt: 0,
+    boundWallet: db.walletBindings[userKey] || null,
+    rfidHash: userKey,
+  };
+  req.session.userKey = userKey;
+  req.session.boundWallet = db.sessions[userKey].boundWallet;
+  writeDB(db);
+  return db.sessions[userKey];
+}
+function policyResult(sess) {
+  const t = nowSec();
+  const needFull = t - sess.lastFullAuthAt >= Number(FULL_RELOGIN_WINDOW);
+  const needWalletOnly =
+    !needFull && t - sess.lastWalletAuthAt >= Number(WALLET_ONLY_WINDOW);
+  return { needFull, needWalletOnly };
+}
+
+// === ESP8266: RFID + PIN ===
+// Body: { rfid: "string", password: "string" }
+app.post("/authenticate", async (req, res) => {
+  try {
+    const { rfid, password } = req.body || {};
+    if (!rfid || !password)
+      return res.status(400).json({ ok: false, error: "bad-request" });
+
+    const rfidHash = hashUtf8(rfid);
+    const passHash = hashUtf8(password);
+
+    // Read user from chain
+    const [exists, hasPassword, wallet] = await contract.getUser(rfidHash);
+    if (!exists)
+      return res.status(401).json({ ok: false, error: "not-registered" });
+
+    let valid = false;
+
+    if (!hasPassword) {
+      // First-time set (admin-only tx)
+      try {
+        const tx = await contract.setPasswordFirstTime(rfidHash, passHash);
+        await tx.wait();
+        valid = true; // first-time accept
+      } catch (e) {
+        console.error("setPasswordFirstTime failed:", e.message);
+        return res
+          .status(500)
+          .json({ ok: false, error: "set-password-failed" });
+      }
+    } else {
+      // Normal verification
+      try {
+        valid = await contract.verifyCredentials(rfidHash, passHash);
+      } catch (e) {
+        console.error("verifyCredentials failed:", e.message);
+        return res
+          .status(500)
+          .json({ ok: false, error: "contract-call-failed" });
+      }
+    }
+
+    if (!valid)
+      return res.status(401).json({ ok: false, error: "invalid-credentials" });
+
+    // Update session record
+    const sess = getOrInitSession(rfidHash, req);
+    const t = nowSec();
+    sess.lastFullAuthAt = t;
+    sess.lastWalletAuthAt = t; // you may decouple if you prefer
+    sess.boundWallet =
+      wallet && wallet !== ethers.constants.AddressZero ? wallet : null;
+    if (sess.boundWallet) db.walletBindings[rfidHash] = sess.boundWallet;
+    writeDB(db);
+
+    const next = sess.boundWallet ? "none" : "wallet";
+    return res.json({
+      ok: true,
+      userId: rfid /* display only */,
+      rfidHash,
+      boundWallet: sess.boundWallet,
+      next,
     });
+  } catch (e) {
+    console.error("/authenticate error:", e);
+    return res.status(500).json({ ok: false, error: "server-error" });
   }
 });
 
-app.listen(port, () =>
-  console.log(`Server running at http://localhost:${port}`),
+// === SIWE-style wallet login ===
+app.get("/siwe/nonce", (req, res) => {
+  const nonce = crypto.randomBytes(16).toString("hex");
+  req.session.nonce = nonce;
+  res.json({ nonce });
+});
+
+app.post("/siwe/verify", async (req, res) => {
+  try {
+    const { address, signature } = req.body || {};
+    const nonce = req.session.nonce;
+    const userKey = req.session.userKey; // rfidHash hex
+
+    if (!nonce || !address || !signature || !userKey) {
+      return res.status(400).json({ ok: false, error: "bad-request" });
+    }
+
+    const message = `Login to ZeroTrust - nonce:${nonce}`;
+    const recovered = ethers.utils.verifyMessage(message, signature);
+    if (recovered.toLowerCase() !== address.toLowerCase())
+      return res.status(401).json({ ok: false, error: "bad-signature" });
+
+    const sess = getOrInitSession(userKey, req);
+
+    // If not bound yet, bind on-chain (admin-only tx)
+    if (!sess.boundWallet) {
+      try {
+        const tx = await contract.bindWallet(userKey, address);
+        await tx.wait();
+        sess.boundWallet = address;
+        db.walletBindings[userKey] = address;
+      } catch (e) {
+        console.error("bindWallet failed:", e.message);
+        return res.status(500).json({ ok: false, error: "bind-failed" });
+      }
+    }
+
+    // Mark wallet auth
+    sess.lastWalletAuthAt = nowSec();
+    req.session.address = address;
+    writeDB(db);
+    return res.json({ ok: true, address, userKey });
+  } catch (e) {
+    console.error("/siwe/verify error:", e);
+    res.status(500).json({ ok: false, error: "server-error" });
+  }
+});
+
+// Policy & protected resource
+app.get("/reauth-policy", (req, res) => {
+  const userKey = req.session.userKey;
+  if (!userKey) return res.json({ needFull: true, needWalletOnly: false });
+  const sess = getOrInitSession(userKey, req);
+  res.json({ ...policyResult(sess) });
+});
+
+app.get("/api/dashboard-state", async (req, res) => {
+  const userKey = req.session.userKey;
+  if (!userKey) return res.status(401).json({ ok: false, error: "no-session" });
+  const sess = getOrInitSession(userKey, req);
+  const pol = policyResult(sess);
+  if (pol.needFull)
+    return res.status(401).json({ ok: false, error: "need-full" });
+  if (pol.needWalletOnly)
+    return res.status(401).json({ ok: false, error: "need-wallet" });
+  res.json({ ok: true, userKey, boundWallet: sess.boundWallet });
+});
+
+// Pages
+app.get("/login", (_, res) =>
+  res.sendFile(path.join(__dirname, "public", "index.html")),
 );
+app.get("/dashboard", (_, res) =>
+  res.sendFile(path.join(__dirname, "public", "dashboard.html")),
+);
+
+app.listen(PORT, () => {
+  console.log(`Zero-Trust server running on http://localhost:${PORT}`);
+});

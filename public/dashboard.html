@@ -1,29 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <title>ZeroTrust Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
+    <meta charset="utf-8" />
+    <title>ZeroTrust – Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0
+        }
+
+        header {
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111827
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 32px auto;
+            padding: 0 16px
+        }
+
+        .card {
+            background: #111827;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .35)
+        }
+
+        h1,
+        h2 {
+            margin: 0 0 10px
+        }
+
+        .status {
+            margin-top: 10px
+        }
+
+        .ok {
+            color: #22c55e
+        }
+
+        .warn {
+            color: #f59e0b
+        }
+
+        .bad {
+            color: #ef4444
+        }
+
+        button {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 0;
+            background: #0ea5e9;
+            color: #082f49;
+            font-weight: 700;
+            cursor: pointer
+        }
+    </style>
 </head>
 
-<body class="dashboard-page">
+<body>
     <header>
-        <h2>Welcome to ZeroTrust Dashboard</h2>
-        <p id="userAddress"></p>
-        <button id="logoutBtn">Logout</button>
+        <strong>ZeroTrust Dashboard</strong>
+        <nav><button onclick="window.location='/login'">Logout</button></nav>
     </header>
-
-    <main class="dashboard-grid">
-        <div class="card">📡 Device Access Logs</div>
-        <div class="card">🔍 Authentication Status</div>
-        <div class="card">🛡️ Role-Based Access</div>
-        <div class="card">📊 Usage Analytics</div>
+    <main>
+        <div class="card">
+            <h2>Session</h2>
+            <div id="state">Loading…</div>
+            <div class="status" id="status"></div>
+            <div style="margin-top:14px">
+                <button id="btnWallet">Re-authenticate with Wallet</button>
+            </div>
+        </div>
     </main>
-
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>
