@@ -30,7 +30,7 @@ const abi = require("./abi/ContractABI.json"); // export from Remix for ZeroTrus
 // --- Ethers setup ---
 let provider, signer, contract;
 try {
-  provider = new ethers.JsonRpcProvider(RPC_URL); //  Correct constructor for ethers v6
+  provider = new ethers.providers.JsonRpcProvider(RPC_URL); //  Correct constructor for ethers v6
   signer = new ethers.Wallet(PRIVATE_KEY, provider);
   contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
   console.log("[OK] Connected to blockchain");
