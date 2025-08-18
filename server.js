@@ -168,6 +168,7 @@ app.get("/siwe/nonce", (req, res) => {
 });
 
 app.post("/siwe/verify", async (req, res) => {
+  console.log(req.body);
   try {
     const { address, signature } = req.body || {};
     const nonce = req.session.nonce;
