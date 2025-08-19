@@ -186,10 +186,11 @@ app.get("/siwe/nonce", (req, res) => {
  * - If not bound yet, provide rfidHash from the *most recent* successful /authenticate (frontend should carry it forward).
  */
 app.post("/siwe/verify", async (req, res) => {
+  console.log(req.body);
   try {
     const { address, signature, rfidHash } = req.body || {};
     const nonce = req.session.nonce;
-
+    console.log("Nonce:", nonce);
     if (!nonce || !address || !signature) {
       return res.status(400).json({ ok: false, error: "bad-request" });
     }
