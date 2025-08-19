@@ -202,7 +202,7 @@ app.post("/siwe/verify", async (req, res) => {
 
     // Verify SIWE message
     const message = `Login to ZeroTrust - nonce:${nonce}`;
-    const recovered = ethers.verifyMessage(message, signature);
+    const recovered = ethers.utils.verifyMessage(message, signature);
     if (recovered.toLowerCase() !== address.toLowerCase()) {
       return res.status(401).json({ ok: false, error: "bad-signature" });
     }
