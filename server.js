@@ -31,7 +31,7 @@ const abi = require("./abi/ContractABI.json");
 let provider, signer, contract;
 try {
   // Ethers v6: JsonRpcProvider is on root
-  provider = new ethers.JsonRpcProvider(RPC_URL);
+  provider = new ethers.providers.JsonRpcProvider(RPC_URL);
   signer = new ethers.Wallet(PRIVATE_KEY, provider);
   contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
   console.log("[OK] Connected to blockchain");
