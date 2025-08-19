@@ -189,7 +189,7 @@ app.post("/siwe/verify", async (req, res) => {
   console.log(req.body);
   try {
     const { address, signature, rfidHash } = req.body || {};
-    const nonce = req.session.nonce;
+    let nonce = req.session.nonce;
     if (!nonce) {
       nonce = crypto.randomBytes(16).toString("hex");
       req.session.nonce = nonce;
