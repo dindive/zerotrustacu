@@ -7,7 +7,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const { ethers } = require("ethers");
+const { ethers, utils } = require("ethers");
 
 // --- Config ---
 const {
@@ -76,7 +76,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 // Helpers
-const hashUtf8 = (s) => ethers.keccak256(ethers.toUtf8Bytes(s));
+const hashUtf8 = (s) => utils.keccak256(utils.toUtf8Bytes(s));
 
 const zeroAddr = ethers.ZeroAddress;
 
