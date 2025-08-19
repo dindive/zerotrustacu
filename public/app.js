@@ -5,8 +5,8 @@ async function getJSON(url) {
 async function postJSON(url, body) {
   const r = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   return r.json();
