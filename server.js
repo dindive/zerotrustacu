@@ -168,15 +168,22 @@ app.get("/siwe/nonce", (req, res) => {
 });
 
 app.post("/siwe/verify", async (req, res) => {
-  console.log(req.body);
   try {
     const { address, signature } = req.body || {};
     const nonce = req.session.nonce;
-    const userKey = req.session.userKey;
+    let userKey = req.session.userKey;
 
-    console.log("Nonce:", nonce);
-    console.log("userkey: ", userKey);
-    
+    if (!userKey && address) {
+      // fallback: try to find userKey bound to this wallet
+      for (const [rfidHash, wallet] of Object.entries(db.walletBindings)) {
+        if (wallet.toLowerCase() === address.toLowerCase()) {
+          userKey = rfidHash;
+          req.session.userKey = userKey;
+          break;
+        }
+      }
+    }
+
     if (!nonce || !address || !signature || !userKey) {
       return res.status(400).json({ ok: false, error: "bad-request" });
     }
@@ -189,20 +196,16 @@ app.post("/siwe/verify", async (req, res) => {
     const sess = getOrInitSession(userKey, req);
 
     if (!sess.boundWallet) {
-      try {
-        const tx = await contract.bindWallet(userKey, address);
-        await tx.wait();
-        sess.boundWallet = address;
-        db.walletBindings[userKey] = address;
-      } catch (e) {
-        console.error("bindWallet failed:", e.message);
-        return res.status(500).json({ ok: false, error: "bind-failed" });
-      }
+      const tx = await contract.bindWallet(userKey, address);
+      await tx.wait();
+      sess.boundWallet = address;
+      db.walletBindings[userKey] = address;
     }
 
     sess.lastWalletAuthAt = nowSec();
     req.session.address = address;
     writeDB(db);
+
     return res.json({ ok: true, address, userKey });
   } catch (e) {
     console.error("/siwe/verify error:", e);
