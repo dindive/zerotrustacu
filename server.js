@@ -190,6 +190,11 @@ app.post("/siwe/verify", async (req, res) => {
   try {
     const { address, signature, rfidHash } = req.body || {};
     const nonce = req.session.nonce;
+    if (!nonce) {
+      nonce = crypto.randomBytes(16).toString("hex");
+      req.session.nonce = nonce;
+      console.warn("[WARN] Nonce was missing, generated new:", nonce);
+    }
     console.log("Nonce:", nonce);
     if (!nonce || !address || !signature) {
       return res.status(400).json({ ok: false, error: "bad-request" });
