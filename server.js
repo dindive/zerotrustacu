@@ -61,8 +61,12 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax" },
-  }),
+    cookie: {
+      httpOnly: true,
+      sameSite: "none", // allow cross-origin
+      secure: false,    // set true if using HTTPS
+    },
+  })
 );
 app.use(express.static(path.join(__dirname, "public")));
 
