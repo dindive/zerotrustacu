@@ -164,7 +164,7 @@ app.post("/authenticate", async (req, res) => {
 app.get("/siwe/nonce", (req, res) => {
   const nonce = crypto.randomBytes(16).toString("hex");
   req.session.nonce = nonce;
-  console.log("session nonnce". req.session.nonce);
+  console.log("session nonnce", req.session.nonce);
   console.log("[/siwe/nonce] nonce:", nonce);
   res.json({ nonce });
 });
