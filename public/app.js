@@ -50,7 +50,7 @@ if (btn) {
     if (res.ok) {
       log?.("Wallet verified ✅");
       // If on login page, go to dashboard
-      location.href = "/dashboard.html";
+      window.location.href = "https://zerotrustacu.onrender.com/dashboard.html";
       else loadDashboard();
     } else {
       log?.(`Wallet verify failed: ${res.error || "unknown"}`);
