@@ -5,8 +5,8 @@ async function getJSON(url) {
 async function postJSON(url, body) {
   const r = await fetch(url, {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
   return r.json();
@@ -50,7 +50,7 @@ if (btn) {
     if (res.ok) {
       log?.("Wallet verified ✅");
       // If on login page, go to dashboard
-      location.href = "/dashboard.html";
+      if (location.pathname.includes("/login")) location.href = "/dashboard";
       else loadDashboard();
     } else {
       log?.(`Wallet verify failed: ${res.error || "unknown"}`);
