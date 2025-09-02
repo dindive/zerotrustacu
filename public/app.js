@@ -50,7 +50,9 @@ if (btn) {
     if (res.ok) {
       log?.("Wallet verified ✅");
       // If on login page, go to dashboard
-      location.href = "/dashboard.html";
+     if (location.pathname.includes("/login")) {
+      location.href = "/dashboard";
+    }
       else loadDashboard();
     } else {
       log?.(`Wallet verify failed: ${res.error || "unknown"}`);
